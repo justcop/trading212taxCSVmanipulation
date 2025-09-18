@@ -11,10 +11,13 @@
 
   <script>
     let modifiedCsv = "";
+    let originalFileName = "";
 
     document.getElementById("csvFile").addEventListener("change", function (e) {
       const file = e.target.files[0];
       if (!file) return;
+
+      originalFileName = file.name;
 
       Papa.parse(file, {
         complete: function (results) {
@@ -40,10 +43,22 @@
     });
 
     document.getElementById("downloadBtn").addEventListener("click", function () {
-      const blob = new Blob([modifiedCsv], { type: "text/csv;charset=utf-8;" });
+      // Add UTF-8 BOM for Excel compatibility
+      const bom = "\uFEFF";
+      const blob = new Blob([bom + modifiedCsv], { type: "text/csv;charset=utf-8;" });
+
+      // Create new file name with "-modified" before the extension
+      const dotIndex = originalFileName.lastIndexOf(".");
+      let newFileName;
+      if (dotIndex !== -1) {
+        newFileName = originalFileName.slice(0, dotIndex) + "-modified" + originalFileName.slice(dotIndex);
+      } else {
+        newFileName = originalFileName + "-modified.csv";
+      }
+
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = "modified.csv";
+      link.download = newFileName;
       link.click();
     });
   </script>
