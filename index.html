@@ -1,101 +1,130 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CSV Modifier</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #f9fafb;
-      color: #333;
-      margin: 0;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    h1 {
-      font-size: 1.5rem;
-      text-align: center;
-      margin-bottom: 1rem;
-      color: #1f2937;
-    }
-
-    .card {
-      background: #fff;
-      padding: 1.5rem;
-      border-radius: 1rem;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      width: 100%;
-      max-width: 500px;
-      text-align: center;
-    }
-
-    input[type="file"] {
-      margin: 1rem 0;
-      font-size: 1rem;
-    }
-
-    button {
-      background: #2563eb;
-      color: white;
-      border: none;
-      padding: 0.75rem 1.5rem;
-      border-radius: 0.5rem;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.2s ease-in-out;
-    }
-
-    button:disabled {
-      background: #9ca3af;
-      cursor: not-allowed;
-    }
-
-    button:hover:not(:disabled) {
-      background: #1e40af;
-    }
-
-    footer {
-      margin-top: 2rem;
-      font-size: 0.8rem;
-      color: #6b7280;
-      text-align: center;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Column Modifier</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PapaParse for CSV handling -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Google Fonts for a cleaner look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Using the 'Inter' font family */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
 </head>
-<body>
-  <h1>CSV Modifier</h1>
-  <div class="card">
-    <p>Upload a CSV file to:</p>
-    <ul style="text-align:left; max-width: 350px; margin: 0 auto; font-size: 0.9rem;">
-      <li>Swap columns <strong>M</strong> and <strong>N</strong></li>
-      <li>Remove columns <strong>F</strong> and <strong>G</strong></li>
-    </ul>
-    <input type="file" id="csvFile" accept=".csv" />
-    <br>
-    <button id="downloadBtn" disabled>Download Modified CSV</button>
-  </div>
-  <footer>
-    Works fully offline in your browser. Mobile friendly.
-  </footer>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
-  <script>
-    let modifiedCsv = "";
-    let originalFileName = "";
+    <div class="w-full max-w-lg bg-white rounded-xl shadow-lg p-8 space-y-6">
+        <!-- Header Section -->
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-gray-800">CSV Column Modifier</h1>
+            <p class="text-gray-500 mt-2">Swap columns M & N, and remove columns F & G from your CSV file.</p>
+        </div>
 
-    document.getElementById("csvFile").addEventListener("change", function (e) {
-      const file = e.target.files[0];
-      if (!file) return;
+        <!-- File Upload Section -->
+        <div>
+            <!-- Custom styled file input button -->
+            <label for="csvFile" class="w-full cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg inline-flex items-center justify-center transition duration-300 ease-in-out">
+                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                <span id="file-chosen">Choose a .CSV file</span>
+            </label>
+            <input type="file" id="csvFile" accept=".csv" class="hidden" />
+        </div>
+        
+        <!-- Message/Status Area -->
+        <div id="message-box" class="text-center text-sm text-green-600 font-medium h-5"></div>
 
-      originalFileName = file.name;
+        <!-- Download Button -->
+        <button id="downloadBtn" disabled class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition duration-300 ease-in-out shadow-md disabled:shadow-none">
+            Download Modified CSV
+        </button>
+    </div>
 
-      Papa.parse(file, {
-        complete: function (results) {
-          const rows = results.data;
+    <script>
+        let modifiedCsvData = "";
+        const fileInput = document.getElementById("csvFile");
+        const downloadBtn = document.getElementById("downloadBtn");
+        const fileChosenText = document.getElementById("file-chosen");
+        const messageBox = document.getElementById("message-box");
 
-          const modified = rows.map(row => {
-            if (row.length >= 14) {
+        // Listen for file selection
+        fileInput.addEventListener("change", function (e) {
+            const file = e.target.files[0];
+            if (!file) {
+                fileChosenText.textContent = "Choose a .CSV file";
+                messageBox.textContent = "";
+                return;
+            };
+
+            fileChosenText.textContent = file.name;
+            messageBox.textContent = "Processing...";
+            downloadBtn.disabled = true;
+
+            // Use PapaParse to process the CSV
+            Papa.parse(file, {
+                skipEmptyLines: true,
+                complete: function (results) {
+                    const rows = results.data;
+
+                    // --- Core Logic: Modify the CSV data ---
+                    const modifiedRows = rows.map(row => {
+                        let newRow = [...row]; // Create a copy to avoid modifying the original
+
+                        // 1. Swap M (index 12) and N (index 13)
+                        if (newRow.length >= 14) {
+                            [newRow[12], newRow[13]] = [newRow[13], newRow[12]];
+                        }
+                        
+                        // 2. Remove G (index 6) first, then F (index 5)
+                        // It's safer to remove from right to left to avoid index shifting
+                        if (newRow.length >= 7) {
+                            newRow.splice(6, 1); // Remove G
+                        }
+                        if (newRow.length >= 6){
+                             newRow.splice(5, 1); // Remove F
+                        }
+                        
+                        return newRow;
+                    });
+                    // --- End of Core Logic ---
+
+                    modifiedCsvData = Papa.unparse(modifiedRows);
+                    downloadBtn.disabled = false;
+                    messageBox.textContent = "File is ready to download!";
+                },
+                error: function(err, file) {
+                    console.error("PapaParse Error:", err, file);
+                    messageBox.textContent = "Error parsing CSV file.";
+                    messageBox.classList.remove('text-green-600');
+                    messageBox.classList.add('text-red-600');
+                }
+            });
+        });
+
+        // Listen for download button click
+        downloadBtn.addEventListener("click", function () {
+            if (modifiedCsvData) {
+                const blob = new Blob([modifiedCsvData], { type: "text/csv;charset=utf-8;" });
+                const link = document.createElement("a");
+                const originalFilename = fileInput.files[0]?.name.replace('.csv', '') || 'file';
+                
+                link.href = URL.createObjectURL(blob);
+                link.download = `${originalFilename}_modified.csv`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                messageBox.textContent = "Download started!";
+            }
+        });
+    </script>
+
+</body>
+</html>
